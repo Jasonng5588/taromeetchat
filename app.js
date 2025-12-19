@@ -319,8 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize theme and language
     initThemeAndLanguage();
 
-    // Debug API URL
-    showToast(`Debug: API=${API_BASE}`);
+    // Production ready - no debug output
 
     // Show splash and then transition
     setTimeout(() => {

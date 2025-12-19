@@ -31,15 +31,10 @@
         rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 
-    <!-- Register Service Worker -->
+    <!-- Service Worker disabled for now -->
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('SW registered:', reg.scope))
-                    .catch(err => console.log('SW registration failed:', err));
-            });
-        }
+        // Service worker disabled to avoid caching issues
+        console.log('TaroMeet v2.1 loaded');
     </script>
 </head>
 
@@ -880,8 +875,8 @@
     <!-- Toast Message -->
     <div id="toast" class="toast hidden"></div>
 
-    <script src="mood-responses.js"></script>
-    <script src="app.js"></script>
+    <script src="mood-responses.js?v=20231219"></script>
+    <script src="app.js?v=20231219"></script>
 </body>
 
 </html>
