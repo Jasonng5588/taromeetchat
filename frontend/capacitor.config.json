@@ -1,0 +1,11 @@
+{
+  "appId": "com.taromeet.app",
+  "appName": "TaroMeet",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}
