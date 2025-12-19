@@ -42,7 +42,8 @@ if (isVercel) {
 const API_BASE = api_url;
 console.log('TaroMeet API URL configured as:', API_BASE || '(same domain)');
 
-const DEMO_MODE = false; // Always use real backend
+// Enable DEMO_MODE on Vercel for AI features, but still use real auth APIs
+const DEMO_MODE = useVercelApi;  // Demo mode for Vercel deployment
 
 
 
