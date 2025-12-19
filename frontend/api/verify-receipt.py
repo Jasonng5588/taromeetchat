@@ -1,12 +1,24 @@
-"""
-Verify Receipt API - Vercel Serverless Function
-POST /api/verify-receipt
-"""
 from http.server import BaseHTTPRequestHandler
 import json
 from datetime import datetime, timedelta
-from _db import SessionLocal, User, PaymentReceipt
-from _auth import decode_token
+
+import psycopg2
+from jose import jwt
+
+# Config
+DATABASE_URL = "postgresql://postgres.jxregeqaytbcwtrmlweg:55886767%2BaB@aws-1-ap-south-1.pooler.supabase.com:5432/postgres"
+SECRET_KEY = "taromeet-super-secret-key-2024"
+ALGORITHM = "HS256"
+
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL)
+
+def decode_token(token):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload.get('sub')
+    except:
+        return None
 
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -15,74 +27,72 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
         self.end_headers()
+        return
     
     def do_POST(self):
         try:
             # Get auth token
             auth_header = self.headers.get('Authorization', '')
             if not auth_header.startswith('Bearer '):
-                self.send_error_response(401, "未授权")
+                self.send_error_json(401, "未授权")
                 return
             
             token = auth_header.replace('Bearer ', '')
-            payload = decode_token(token)
-            if not payload:
-                self.send_error_response(401, "Token无效")
+            email = decode_token(token)
+            
+            if not email:
+                self.send_error_json(401, "Token无效")
                 return
             
-            email = payload.get('sub')
+            conn = get_db_connection()
+            cur = conn.cursor()
             
-            db = SessionLocal()
-            try:
-                user = db.query(User).filter(User.email == email).first()
-                if not user:
-                    self.send_error_response(401, "用户不存在")
-                    return
-                
-                # Auto-approve receipt (fallback since no Ollama on Vercel)
-                # Save payment record
-                payment_record = PaymentReceipt(
-                    user_id=user.id,
-                    amount=19.90,
-                    receipt_image="uploaded",
-                    status="approved",
-                    ai_analysis="Auto-verified (Vercel serverless)",
-                    created_at=datetime.utcnow()
-                )
-                db.add(payment_record)
-                
-                # Upgrade user to premium
-                user.is_premium = True
-                user.premium_until = datetime.utcnow() + timedelta(days=30)
-                db.commit()
-                
-                response = {
-                    "success": True,
-                    "message": "验证成功！您已升级为 Premium 会员 🎉",
-                    "is_premium": True,
-                    "verification_details": {
-                        "verified": True,
-                        "method": "auto-verified"
-                    }
-                }
-                
-                self.send_json_response(200, response)
-            finally:
-                db.close()
-                
+            # Get user
+            cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+            row = cur.fetchone()
+            
+            if not row:
+                cur.close()
+                conn.close()
+                self.send_error_json(401, "用户不存在")
+                return
+            
+            user_id = row[0]
+            
+            # Upgrade to premium
+            premium_until = datetime.utcnow() + timedelta(days=30)
+            cur.execute(
+                "UPDATE users SET is_premium = TRUE, premium_until = %s WHERE id = %s",
+                (premium_until, user_id)
+            )
+            conn.commit()
+            cur.close()
+            conn.close()
+            
+            response = {
+                "success": True,
+                "message": "验证成功！您已升级为 Premium 会员 🎉",
+                "is_premium": True,
+                "verification_details": {"verified": True, "method": "auto-verified"}
+            }
+            
+            self.send_json(200, response)
+            
         except Exception as e:
-            self.send_error_response(500, str(e))
+            self.send_error_json(500, str(e))
     
-    def send_json_response(self, status, data):
+    def send_json(self, status, data):
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
+        return
     
-    def send_error_response(self, status, message):
+    def send_error_json(self, status, message):
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         self.wfile.write(json.dumps({"detail": message}).encode())
+        return

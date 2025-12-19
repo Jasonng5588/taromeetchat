@@ -1,12 +1,25 @@
-"""
-Login API - Vercel Serverless Function
-POST /api/login
-"""
 from http.server import BaseHTTPRequestHandler
 import json
 from urllib.parse import parse_qs
-from _db import SessionLocal, User
-from _auth import verify_password, create_access_token
+from datetime import datetime, timedelta
+
+import psycopg2
+from jose import jwt
+from passlib.context import CryptContext
+
+# Config
+DATABASE_URL = "postgresql://postgres.jxregeqaytbcwtrmlweg:55886767%2BaB@aws-1-ap-south-1.pooler.supabase.com:5432/postgres"
+SECRET_KEY = "taromeet-super-secret-key-2024"
+ALGORITHM = "HS256"
+
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL)
+
+def create_access_token(email):
+    expire = datetime.utcnow() + timedelta(days=7)
+    return jwt.encode({"sub": email, "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
 
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -15,6 +28,7 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
         self.end_headers()
+        return
     
     def do_POST(self):
         try:
@@ -25,55 +39,72 @@ class handler(BaseHTTPRequestHandler):
             # Parse form data or JSON
             if 'application/x-www-form-urlencoded' in content_type:
                 parsed = parse_qs(body)
-                email = parsed.get('username', [''])[0]  # OAuth2 uses 'username' field
+                email = parsed.get('username', [''])[0]
                 password = parsed.get('password', [''])[0]
             else:
-                data = json.loads(body)
-                email = data.get('email') or data.get('username')
-                password = data.get('password')
+                data = json.loads(body) if body else {}
+                email = data.get('email') or data.get('username', '')
+                password = data.get('password', '')
             
             if not email or not password:
-                self.send_error_response(400, "缺少邮箱或密码")
+                self.send_error_json(400, "缺少邮箱或密码")
                 return
             
-            db = SessionLocal()
-            try:
-                user = db.query(User).filter(User.email == email).first()
-                
-                if not user or not verify_password(password, user.hashed_password):
-                    self.send_error_response(401, "邮箱或密码错误")
-                    return
-                
-                access_token = create_access_token(data={"sub": email})
-                
-                response = {
-                    "access_token": access_token,
-                    "token_type": "bearer",
-                    "user": {
-                        "id": user.id,
-                        "email": user.email,
-                        "username": user.username,
-                        "is_premium": user.is_premium
-                    }
+            conn = get_db_connection()
+            cur = conn.cursor()
+            
+            # Get user
+            cur.execute("SELECT id, email, username, hashed_password, is_premium FROM users WHERE email = %s", (email,))
+            row = cur.fetchone()
+            
+            if not row:
+                cur.close()
+                conn.close()
+                self.send_error_json(401, "邮箱或密码错误")
+                return
+            
+            user_id, user_email, username, hashed_password, is_premium = row
+            
+            if not pwd_context.verify(password, hashed_password):
+                cur.close()
+                conn.close()
+                self.send_error_json(401, "邮箱或密码错误")
+                return
+            
+            cur.close()
+            conn.close()
+            
+            # Create token
+            token = create_access_token(email)
+            
+            response = {
+                "access_token": token,
+                "token_type": "bearer",
+                "user": {
+                    "id": user_id,
+                    "email": user_email,
+                    "username": username,
+                    "is_premium": is_premium
                 }
-                
-                self.send_json_response(200, response)
-            finally:
-                db.close()
-                
+            }
+            
+            self.send_json(200, response)
+            
         except Exception as e:
-            self.send_error_response(500, str(e))
+            self.send_error_json(500, str(e))
     
-    def send_json_response(self, status, data):
+    def send_json(self, status, data):
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
+        return
     
-    def send_error_response(self, status, message):
+    def send_error_json(self, status, message):
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         self.wfile.write(json.dumps({"detail": message}).encode())
+        return
