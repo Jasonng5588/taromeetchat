@@ -596,6 +596,13 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
         return getDemoResponse(endpoint, body);
     }
 
+    // On Vercel, use demo responses for AI/tarot features (these don't have serverless APIs)
+    // Only auth and payment have real Vercel APIs
+    if (useVercelApi && !endpoint.includes('/auth') && !endpoint.includes('/payment') && !endpoint.includes('/api/')) {
+        console.log('Using demo response for:', endpoint);
+        return getDemoResponse(endpoint, body);
+    }
+
     const headers = {
         'Content-Type': 'application/json'
     };
@@ -613,14 +620,23 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
         options.body = JSON.stringify(body);
     }
 
-    const response = await fetch(`${API_BASE}${endpoint}`, options);
+    try {
+        const response = await fetch(`${API_BASE}${endpoint}`, options);
 
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || '请求失败');
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: '请求失败' }));
+            throw new Error(error.detail || '请求失败');
+        }
+
+        return response.json();
+    } catch (error) {
+        // If API call fails on Vercel, fallback to demo response
+        if (useVercelApi) {
+            console.log('API failed, using demo response:', error.message);
+            return getDemoResponse(endpoint, body);
+        }
+        throw error;
     }
-
-    return response.json();
 }
 
 // ===== Demo Mode Responses =====
