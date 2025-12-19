@@ -304,14 +304,14 @@ function initThemeAndLanguage() {
 
 // ===== Initialization =====
 document.addEventListener('DOMContentLoaded', () => {
-    // Check for saved auth
-    const savedToken = localStorage.getItem('taromeet_token');
-    const savedUser = localStorage.getItem('taromeet_user');
-
-    if (savedToken && savedUser) {
-        state.token = savedToken;
-        state.user = JSON.parse(savedUser);
-    }
+    // Auto-login with demo user - skip login screen
+    state.token = 'demo_token';
+    state.user = {
+        username: 'Demo User',
+        email: 'demo@taromeet.com'
+    };
+    localStorage.setItem('taromeet_token', 'demo_token');
+    localStorage.setItem('taromeet_user', JSON.stringify(state.user));
 
     // Setup event listeners
     setupEventListeners();
@@ -321,14 +321,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Production ready - no debug output
 
-    // Show splash and then transition
+    // Show splash and then go directly to home
     setTimeout(() => {
-        if (state.token) {
-            showScreen('home-screen');
-            updateUserUI();
-        } else {
-            showScreen('login-screen');
-        }
+        showScreen('home-screen');
+        updateUserUI();
     }, 2000);
 });
 
