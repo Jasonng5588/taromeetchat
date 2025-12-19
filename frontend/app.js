@@ -566,9 +566,16 @@ function logout() {
 
 function updateUserUI() {
     if (state.user) {
-        document.getElementById('home-username').textContent = state.user.username;
-        document.getElementById('settings-username').textContent = state.user.username;
-        document.getElementById('settings-email').textContent = state.user.email;
+        const username = state.user.username || state.user.email?.split('@')[0] || 'User';
+        const email = state.user.email || '';
+
+        const homeUsername = document.getElementById('home-username');
+        const settingsUsername = document.getElementById('settings-username');
+        const settingsEmail = document.getElementById('settings-email');
+
+        if (homeUsername) homeUsername.textContent = username;
+        if (settingsUsername) settingsUsername.textContent = username;
+        if (settingsEmail) settingsEmail.textContent = email;
 
         // Update greeting based on time
         const hour = new Date().getHours();
@@ -577,7 +584,8 @@ function updateUserUI() {
         else if (hour >= 12 && hour < 18) greeting = '下午好';
         else greeting = '晚上好';
 
-        document.querySelector('.greeting-text').textContent = greeting;
+        const greetingEl = document.querySelector('.greeting-text');
+        if (greetingEl) greetingEl.textContent = greeting;
     }
 }
 
