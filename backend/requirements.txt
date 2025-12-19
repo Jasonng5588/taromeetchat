@@ -7,7 +7,5 @@ passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
 aiofiles==23.2.1
 httpx==0.25.2
-edge-tts==6.1.9
-openai-whisper==20231117
 pydantic==2.5.2
 pydantic-settings==2.1.0
