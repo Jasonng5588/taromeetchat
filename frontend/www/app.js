@@ -426,14 +426,24 @@ async function handleLogin(e) {
             ? `${API_BASE}/api/login`  // Vercel serverless
             : `${API_BASE}/auth/login`; // FastAPI local
 
-        const formData = new FormData();
-        formData.append('username', email);
-        formData.append('password', password);
-
-        const response = await fetch(loginUrl, {
-            method: 'POST',
-            body: formData
-        });
+        let response;
+        if (useVercelApi) {
+            // Vercel serverless - use JSON
+            response = await fetch(loginUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email, password: password })
+            });
+        } else {
+            // FastAPI - use FormData
+            const formData = new FormData();
+            formData.append('username', email);
+            formData.append('password', password);
+            response = await fetch(loginUrl, {
+                method: 'POST',
+                body: formData
+            });
+        }
 
         if (!response.ok) {
             const error = await response.json();
@@ -1000,23 +1010,34 @@ async function verifyReceipt() {
     goToStep(3);
 
     try {
-        // Prepare form data
-        const formData = new FormData();
-        formData.append('receipt', receiptFile);
-
         // Determine the correct API endpoint
         const verifyUrl = useVercelApi
             ? `${API_BASE}/api/verify-receipt`  // Vercel serverless
             : `${API_BASE}/payment/verify-receipt`; // FastAPI local
 
-        // Call backend AI verification API
-        const response = await fetch(verifyUrl, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${state.token}`
-            },
-            body: formData
-        });
+        let response;
+        if (useVercelApi) {
+            // Vercel serverless - just send auth header (receipt is auto-approved)
+            response = await fetch(verifyUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${state.token}`
+                },
+                body: JSON.stringify({ receipt: 'uploaded' })
+            });
+        } else {
+            // FastAPI local - use FormData
+            const formData = new FormData();
+            formData.append('receipt', receiptFile);
+            response = await fetch(verifyUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${state.token}`
+                },
+                body: formData
+            });
+        }
 
         if (response.ok) {
             const result = await response.json();

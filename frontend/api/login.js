@@ -22,18 +22,22 @@ module.exports = async (req, res) => {
     try {
         let email, password;
 
-        // Parse form data or JSON
+        // Handle different content types
         const contentType = req.headers['content-type'] || '';
-        if (contentType.includes('application/x-www-form-urlencoded')) {
-            email = req.body.username;  // OAuth2 format uses 'username'
-            password = req.body.password;
+
+        if (contentType.includes('multipart/form-data') || contentType.includes('application/x-www-form-urlencoded')) {
+            // Form data - req.body should contain parsed form
+            email = req.body?.username || req.body?.email || '';
+            password = req.body?.password || '';
         } else {
-            email = req.body.email || req.body.username;
-            password = req.body.password;
+            // JSON body
+            const body = req.body || {};
+            email = body.email || body.username || '';
+            password = body.password || '';
         }
 
         if (!email || !password) {
-            return res.status(400).json({ detail: '缺少邮箱或密码' });
+            return res.status(400).json({ detail: '缺少邮箱或密码', debug: { email: !!email, password: !!password, contentType } });
         }
 
         const client = new Client({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
@@ -69,7 +73,7 @@ module.exports = async (req, res) => {
                 id: user.id,
                 email: user.email,
                 username: user.username,
-                is_premium: user.is_premium
+                is_premium: user.is_premium || false
             }
         });
 
