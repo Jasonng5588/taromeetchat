@@ -1,37 +1,45 @@
 // ===== TaroMeet App JavaScript =====
 
-// API Configuration - Dynamic URL
-// 1. Web Localhost: Use localhost:8000
-// 2. Web IP (LAN): Use IP:8000
-// 3. Android Emulator: Use 10.0.2.2:8000
-// 4. Real Device (built apk): Need manual IP or logic
+// API Configuration - Smart Environment Detection
+// Automatically detects the right backend URL based on environment:
+// 1. Vercel/Production: Use Railway backend
+// 2. Localhost: Use localhost:8000
+// 3. Capacitor/Mobile: Use configured IP or Railway backend
 
-let api_url = 'http://localhost:8000'; // Default
+// Railway Backend URL - UPDATE THIS after deploying backend to Railway
+const RAILWAY_BACKEND_URL = 'https://taromeet-backend.up.railway.app';
+
+// Detect environment
 const isCapacitor = window.Capacitor !== undefined;
+const isVercel = window.location.hostname.includes('vercel.app');
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-if (isCapacitor) {
-    // Mobile Environment
-    console.log('Environment: Capacitor/Mobile');
-    // Default to LAN IP for real device
-    api_url = 'http://192.168.100.213:8000';
+let api_url;
+
+if (isVercel) {
+    // Vercel deployment - use Railway backend
+    api_url = RAILWAY_BACKEND_URL;
+    console.log('Environment: Vercel - using Railway backend');
+} else if (isCapacitor) {
+    // Mobile app - use Railway backend for production APK
+    api_url = RAILWAY_BACKEND_URL;
+    console.log('Environment: Capacitor/Mobile - using Railway backend');
+} else if (isLocalhost) {
+    // Local development - use local backend
+    api_url = 'http://localhost:8000';
+    console.log('Environment: Localhost - using local backend');
 } else {
-    // Web Environment
+    // Other (e.g., accessed via IP on LAN)
     const host = window.location.hostname;
-    if (host === 'localhost' || host === '127.0.0.1') {
-        api_url = 'http://localhost:8000';
-    } else if (window.location.protocol === 'file:') {
-        // Opened as file, assume local
-        api_url = 'http://localhost:8000';
-    } else {
-        // Accessed via IP (e.g. 192.168.1.x), assume backend is on same host
-        api_url = `http://${host}:8000`;
-    }
+    api_url = `http://${host}:8000`;
+    console.log('Environment: LAN - using', api_url);
 }
 
 const API_BASE = api_url;
 console.log('TaroMeet API URL configured as:', API_BASE);
 
-const DEMO_MODE = true; // Enabled - works without backend server
+const DEMO_MODE = false; // Always use real backend
+
 
 
 // App State
@@ -318,9 +326,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize theme and language
     initThemeAndLanguage();
-
-    // Debug API URL
-    showToast(`Debug: API=${API_BASE}`);
 
     // Show splash and then transition
     setTimeout(() => {
