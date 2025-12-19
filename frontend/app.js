@@ -452,11 +452,16 @@ async function handleLogin(e) {
 
         const data = await response.json();
 
+        // Validate response has required fields
+        if (!data || !data.access_token) {
+            throw new Error('服务器响应格式错误');
+        }
+
         state.token = data.access_token;
-        state.user = data.user;
+        state.user = data.user || { email: email, username: email.split('@')[0] };
 
         localStorage.setItem('taromeet_token', data.access_token);
-        localStorage.setItem('taromeet_user', JSON.stringify(data.user));
+        localStorage.setItem('taromeet_user', JSON.stringify(state.user));
 
         hideLoading();
         updateUserUI();
@@ -465,7 +470,8 @@ async function handleLogin(e) {
 
     } catch (error) {
         hideLoading();
-        showToast(error.message);
+        console.error('Login error:', error);
+        showToast(error.message || '登录失败');
     }
 }
 
