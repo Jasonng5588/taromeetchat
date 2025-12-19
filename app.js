@@ -5,8 +5,8 @@
 // 2. Localhost: Use localhost:8000 (local FastAPI backend)
 // 3. Capacitor/Mobile: Use Vercel URL for production APK
 
-// Vercel production URL - UPDATE after first Vercel deployment
-const VERCEL_URL = 'https://taromeet.vercel.app';
+// Vercel production URL
+const VERCEL_URL = 'https://taromeetchat.vercel.app';
 
 // Detect environment
 const isCapacitor = window.Capacitor !== undefined;
