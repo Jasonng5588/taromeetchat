@@ -1,13 +1,12 @@
 // ===== TaroMeet App JavaScript =====
 
 // API Configuration - Smart Environment Detection
-// Automatically detects the right backend URL based on environment:
-// 1. Vercel/Production: Use Railway backend
-// 2. Localhost: Use localhost:8000
-// 3. Capacitor/Mobile: Use configured IP or Railway backend
+// 1. Vercel: Use /api (serverless functions on same domain)
+// 2. Localhost: Use localhost:8000 (local FastAPI backend)
+// 3. Capacitor/Mobile: Use Vercel URL for production APK
 
-// Railway Backend URL - UPDATE THIS after deploying backend to Railway
-const RAILWAY_BACKEND_URL = 'https://taromeet-backend.up.railway.app';
+// Vercel production URL - UPDATE after first Vercel deployment
+const VERCEL_URL = 'https://taromeet.vercel.app';
 
 // Detect environment
 const isCapacitor = window.Capacitor !== undefined;
@@ -15,28 +14,33 @@ const isVercel = window.location.hostname.includes('vercel.app');
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
 let api_url;
+let useVercelApi = false;  // Flag to use /api routes instead of FastAPI
 
 if (isVercel) {
-    // Vercel deployment - use Railway backend
-    api_url = RAILWAY_BACKEND_URL;
-    console.log('Environment: Vercel - using Railway backend');
+    // Vercel deployment - use same-domain /api routes
+    api_url = '';  // Empty = same domain
+    useVercelApi = true;
+    console.log('Environment: Vercel - using serverless /api');
 } else if (isCapacitor) {
-    // Mobile app - use Railway backend for production APK
-    api_url = RAILWAY_BACKEND_URL;
-    console.log('Environment: Capacitor/Mobile - using Railway backend');
+    // Mobile app - use Vercel serverless for production APK
+    api_url = VERCEL_URL;
+    useVercelApi = true;
+    console.log('Environment: Capacitor/Mobile - using Vercel serverless');
 } else if (isLocalhost) {
-    // Local development - use local backend
+    // Local development - use local FastAPI backend
     api_url = 'http://localhost:8000';
+    useVercelApi = false;
     console.log('Environment: Localhost - using local backend');
 } else {
     // Other (e.g., accessed via IP on LAN)
     const host = window.location.hostname;
     api_url = `http://${host}:8000`;
+    useVercelApi = false;
     console.log('Environment: LAN - using', api_url);
 }
 
 const API_BASE = api_url;
-console.log('TaroMeet API URL configured as:', API_BASE);
+console.log('TaroMeet API URL configured as:', API_BASE || '(same domain)');
 
 const DEMO_MODE = false; // Always use real backend
 
@@ -417,11 +421,16 @@ async function handleLogin(e) {
     }
 
     try {
+        // Determine the correct API endpoint
+        const loginUrl = useVercelApi
+            ? `${API_BASE}/api/login`  // Vercel serverless
+            : `${API_BASE}/auth/login`; // FastAPI local
+
         const formData = new FormData();
         formData.append('username', email);
         formData.append('password', password);
 
-        const response = await fetch(`${API_BASE}/auth/login`, {
+        const response = await fetch(loginUrl, {
             method: 'POST',
             body: formData
         });
@@ -478,7 +487,12 @@ async function handleRegister(e) {
     }
 
     try {
-        const response = await fetch(`${API_BASE}/auth/register`, {
+        // Determine the correct API endpoint
+        const registerUrl = useVercelApi
+            ? `${API_BASE}/api/register`  // Vercel serverless
+            : `${API_BASE}/auth/register`; // FastAPI local
+
+        const response = await fetch(registerUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -990,8 +1004,13 @@ async function verifyReceipt() {
         const formData = new FormData();
         formData.append('receipt', receiptFile);
 
+        // Determine the correct API endpoint
+        const verifyUrl = useVercelApi
+            ? `${API_BASE}/api/verify-receipt`  // Vercel serverless
+            : `${API_BASE}/payment/verify-receipt`; // FastAPI local
+
         // Call backend AI verification API
-        const response = await fetch(`${API_BASE}/payment/verify-receipt`, {
+        const response = await fetch(verifyUrl, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${state.token}`
