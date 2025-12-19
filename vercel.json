@@ -1,15 +1,5 @@
 {
-    "version": 2,
-    "builds": [
-        {
-            "src": "frontend/www/**",
-            "use": "@vercel/static"
-        }
-    ],
-    "routes": [
-        {
-            "src": "/(.*)",
-            "dest": "/frontend/www/$1"
-        }
-    ]
+    "buildCommand": "",
+    "outputDirectory": "public",
+    "installCommand": ""
 }
