@@ -1,17 +1,15 @@
 {
-    "functions": {
-        "api/*.py": {
-            "runtime": "python3.9"
-        }
-    },
     "routes": [
         {
             "src": "/api/(.*)",
-            "dest": "/api/$1.py"
+            "dest": "/api/$1.js"
+        },
+        {
+            "handle": "filesystem"
         },
         {
             "src": "/(.*)",
-            "dest": "/$1"
+            "dest": "/index.html"
         }
     ],
     "headers": [
@@ -24,7 +22,7 @@
                 },
                 {
                     "key": "Access-Control-Allow-Methods",
-                    "value": "GET, POST, PUT, DELETE, OPTIONS"
+                    "value": "GET, POST, OPTIONS"
                 },
                 {
                     "key": "Access-Control-Allow-Headers",
