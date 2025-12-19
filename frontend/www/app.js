@@ -31,7 +31,7 @@ if (isCapacitor) {
 const API_BASE = api_url;
 console.log('TaroMeet API URL configured as:', API_BASE);
 
-const DEMO_MODE = false; // Disabled - use real backend authentication
+const DEMO_MODE = true; // Enabled - works without backend server
 
 
 // App State
